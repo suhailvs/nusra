@@ -61,6 +61,7 @@
   .hint a { color: var(--green); }
   @media (prefers-color-scheme: dark) { .hint a { color: var(--accent); } }
 </style>
+{% block manifest %}{% endblock %}
 </head>
 <body>
 <div class="app">{% block content %}{% endblock %}</div>
