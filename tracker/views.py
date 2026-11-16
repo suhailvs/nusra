@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from django.http import HttpResponse
-from django.shortcuts import render, redirect
+from django.http import HttpResponse, JsonResponse
+from django.urls import reverse
+from django.shortcuts import render, redirect, get_object_or_404
 from .forms import CustomerForm, MedicineForm
 from .models import Medicine
 
@@ -16,22 +17,42 @@ def service_worker(request):
 
 def home(request):
     medicines = Medicine.objects.select_related("customer")
-    return render(request, "tracker/home.html", {"medicines": medicines})
+    return render(request, "tracker/home.html", {
+        "medicines": medicines,
+        "customer_form": CustomerForm(),
+        "medicine_form": MedicineForm(),
+    })
 
 
 def add_customer(request):
-    form = CustomerForm(request.POST or None)
-    if form.is_valid():
-        form.save()
+    if request.method != "POST":
         return redirect("home")
-    return render(request, "tracker/form.html", {"form": form, "title": "Add customer"})
+    form = CustomerForm(request.POST)
+    if form.is_valid():
+        customer = form.save()
+        return JsonResponse({"id": customer.pk, "name": customer.name, "phone": customer.phone})
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
 
 
 def add_medicine(request):
-    form = MedicineForm(request.POST or None)
-    if form.is_valid():
-        form.save()
+    if request.method != "POST":
         return redirect("home")
-    return render(request, "tracker/form.html", {
-        "form": form, "title": "Add medicine", "extra_link": True,
-    })
+    form = MedicineForm(request.POST)
+    if form.is_valid():
+        medicine = form.save()
+        return JsonResponse({
+            "id": medicine.pk,
+            "name": medicine.name,
+            "customer": medicine.customer.name,
+            "phone": medicine.customer.phone,
+            "delete_url": reverse("delete_medicine", args=[medicine.pk]),
+        })
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+
+
+def delete_medicine(request, pk):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+    medicine = get_object_or_404(Medicine, pk=pk)
+    medicine.delete()
+    return JsonResponse({"deleted": True})

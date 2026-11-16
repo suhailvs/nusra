@@ -25,6 +25,7 @@
       <b>{{ m.name }}</b>
       <span>{{ m.customer.name }}{% if m.customer.phone %} · {{ m.customer.phone }}{% endif %}</span>
     </div>
+    <button class="delete-medicine" type="button" data-delete-url="{% url 'delete_medicine' m.pk %}" aria-label="Delete {{ m.name }}" title="Delete medicine">×</button>
   </div>
   {% endfor %}
 </div>
@@ -33,8 +34,44 @@
 </p>
 
 <div class="fabs">
-  <a class="fab small" href="{% url 'add_customer' %}" title="Add customer" aria-label="Add customer">👤</a>
-  <a class="fab big" href="{% url 'add_medicine' %}" title="Add medicine" aria-label="Add medicine">＋</a>
+  <button class="fab big" type="button" data-bs-toggle="modal" data-bs-target="#medicineModal" title="Add medicine" aria-label="Add medicine">＋</button>
+</div>
+
+<div class="modal fade" id="customerModal" tabindex="-1" aria-labelledby="customerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="customerForm" method="post" action="{% url 'add_customer' %}">
+        {% csrf_token %}
+        <div class="modal-header"><h2 class="modal-title fs-5" id="customerModalLabel">Add customer</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+        <div class="modal-body">
+          <label class="form-label" for="customer_name">Customer name</label>
+          {{ customer_form.name }}<div class="invalid-feedback" data-error-for="name"></div>
+          <label class="form-label mt-3" for="id_phone">Phone (optional)</label>
+          {{ customer_form.phone }}<div class="invalid-feedback" data-error-for="phone"></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-success" type="submit">Save customer</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="medicineModal" tabindex="-1" aria-labelledby="medicineModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="medicineForm" method="post" action="{% url 'add_medicine' %}">
+        {% csrf_token %}
+        <div class="modal-header"><h2 class="modal-title fs-5" id="medicineModalLabel">Add medicine</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+        <div class="modal-body">
+          <label class="form-label" for="id_customer">Customer</label>
+          {{ medicine_form.customer }}<div class="invalid-feedback" data-error-for="customer"></div>
+          <div class="text-end mt-1"><button type="button" class="btn btn-link btn-sm p-0" id="openCustomerFromMedicine">Add a new customer</button></div>
+          <label class="form-label mt-3" for="medicine_name">Medicine name</label>
+          {{ medicine_form.name }}<div class="invalid-feedback" data-error-for="name"></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-success" type="submit">Save medicine</button></div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -49,6 +86,136 @@
     });
     none.hidden = shown > 0 || items.length === 0;
     if (items.length) none.textContent = 'No matches.';
+  });
+
+  document.getElementById('list').addEventListener('click', async (event) => {
+    const button = event.target.closest('.delete-medicine');
+    if (!button || !window.confirm('Delete this medicine?')) return;
+    button.disabled = true;
+    const csrfToken = document.querySelector('#medicineForm [name="csrfmiddlewaretoken"]').value;
+    const response = await fetch(button.dataset.deleteUrl, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
+    });
+    if (!response.ok) {
+      button.disabled = false;
+      window.alert('Could not delete this medicine. Please try again.');
+      return;
+    }
+    const row = button.closest('.item');
+    row.remove();
+    const index = items.indexOf(row);
+    if (index !== -1) items.splice(index, 1);
+    const visibleItems = items.filter((item) => !item.hidden).length;
+    none.hidden = visibleItems > 0;
+    if (items.length === 0) none.textContent = 'No medicines yet. Tap + to add one.';
+    else if (visibleItems === 0) none.textContent = 'No matches.';
+  });
+
+  const customerModalElement = document.getElementById('customerModal');
+  const medicineModalElement = document.getElementById('medicineModal');
+  const customerModal = bootstrap.Modal.getOrCreateInstance(customerModalElement);
+  const medicineModal = bootstrap.Modal.getOrCreateInstance(medicineModalElement);
+  let returnToMedicine = false;
+
+  document.getElementById('customer_name').addEventListener('input', (event) => {
+    const input = event.currentTarget;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    input.value = input.value.toLowerCase();
+    input.setSelectionRange(start, end);
+  });
+
+  medicineModalElement.addEventListener('shown.bs.modal', () => {
+    const customerSelect = $('#id_customer');
+    if (!customerSelect.hasClass('select2-hidden-accessible')) {
+      customerSelect.select2({
+        width: '100%',
+        placeholder: 'Select a customer',
+        allowClear: true,
+        dropdownParent: $('#medicineModal')
+      });
+    }
+  });
+
+  document.getElementById('openCustomerFromMedicine').addEventListener('click', () => {
+    returnToMedicine = true;
+    medicineModal.hide();
+    customerModal.show();
+  });
+  customerModalElement.addEventListener('hidden.bs.modal', () => {
+    if (returnToMedicine) {
+      returnToMedicine = false;
+      medicineModal.show();
+    }
+  });
+
+  function clearFormErrors(form) {
+    form.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
+    form.querySelectorAll('[data-error-for]').forEach((error) => { error.textContent = ''; });
+  }
+
+  function showFormErrors(form, errors) {
+    Object.entries(errors).forEach(([fieldName, messages]) => {
+      const field = form.querySelector(`[name="${fieldName}"]`);
+      const error = form.querySelector(`[data-error-for="${fieldName}"]`);
+      if (field && error) {
+        field.classList.add('is-invalid');
+        error.textContent = messages.map((message) => message.message).join(' ');
+      }
+    });
+  }
+
+  document.getElementById('customerForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    clearFormErrors(form);
+    const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    const result = await response.json();
+    if (!response.ok) { showFormErrors(form, result.errors); return; }
+    const option = new Option(result.name + (result.phone ? ` · ${result.phone}` : ''), result.id, true, true);
+    $('#id_customer').append(option).val(String(result.id)).trigger('change');
+    form.reset();
+    customerModal.hide();
+  });
+
+  document.getElementById('medicineForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    clearFormErrors(form);
+    const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    const result = await response.json();
+    if (!response.ok) { showFormErrors(form, result.errors); return; }
+    const row = document.createElement('div');
+    row.className = 'row item';
+    row.dataset.search = `${result.name} ${result.customer} ${result.phone}`.toLowerCase();
+    const avatar = document.createElement('div'); avatar.className = 'avatar'; avatar.textContent = '💊';
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const name = document.createElement('b'); name.textContent = result.name;
+    const customer = document.createElement('span'); customer.textContent = result.customer + (result.phone ? ` · ${result.phone}` : '');
+    meta.append(name, customer);
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'delete-medicine';
+    deleteButton.type = 'button';
+    deleteButton.textContent = '×';
+    deleteButton.setAttribute('aria-label', `Delete ${result.name}`);
+    deleteButton.title = 'Delete medicine';
+    deleteButton.dataset.deleteUrl = result.delete_url;
+    row.append(avatar, meta, deleteButton); document.getElementById('list').prepend(row);
+    items.unshift(row);
+    row.hidden = !row.dataset.search.includes(q.value.trim().toLowerCase());
+    const visibleItems = items.filter((item) => !item.hidden).length;
+    none.hidden = visibleItems > 0;
+    if (items.length) none.textContent = 'No matches.';
+    form.reset();
+    medicineModal.hide();
+  });
+
+  [customerModalElement, medicineModalElement].forEach((modal) => {
+    modal.addEventListener('hidden.bs.modal', () => {
+      const form = modal.querySelector('form');
+      clearFormErrors(form);
+    });
   });
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register('{% url "service_worker" %}').catch((error) => {
