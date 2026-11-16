@@ -1,0 +1,15 @@
+{% extends "tracker/base.html" %}
+{% block content %}
+<header>
+  <a class="back" href="{% url 'home' %}" aria-label="Back">←</a>
+  <h1>{{ title }}</h1>
+</header>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button class="save" type="submit">Save</button>
+</form>
+{% if extra_link %}
+<p class="hint">Customer not in the list? <a href="{% url 'add_customer' %}">Add customer</a></p>
+{% endif %}
+{% endblock %}

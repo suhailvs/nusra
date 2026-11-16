@@ -1,0 +1,42 @@
+{% extends "tracker/base.html" %}
+{% block content %}
+<header><h1>Medicines</h1></header>
+<div class="search">
+  <input id="q" type="search" placeholder="Search medicine or customer" autocomplete="off">
+</div>
+
+<div id="list">
+  {% for m in medicines %}
+  <div class="row item" data-search="{{ m.name|lower }} {{ m.customer.name|lower }} {{ m.customer.phone }}">
+    <div class="avatar">💊</div>
+    <div class="meta">
+      <b>{{ m.name }}</b>
+      <span>{{ m.customer.name }}{% if m.customer.phone %} · {{ m.customer.phone }}{% endif %}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<p id="none" class="empty" {% if medicines %}hidden{% endif %}>
+  {% if medicines %}No matches.{% else %}No medicines yet. Tap + to add one.{% endif %}
+</p>
+
+<div class="fabs">
+  <a class="fab small" href="{% url 'add_customer' %}" title="Add customer" aria-label="Add customer">👤</a>
+  <a class="fab big" href="{% url 'add_medicine' %}" title="Add medicine" aria-label="Add medicine">＋</a>
+</div>
+
+<script>
+  const q = document.getElementById('q'), none = document.getElementById('none');
+  const items = [...document.querySelectorAll('.item')];
+  q.addEventListener('input', () => {
+    const t = q.value.trim().toLowerCase();
+    let shown = 0;
+    items.forEach(el => {
+      const ok = el.dataset.search.includes(t);
+      el.hidden = !ok; if (ok) shown++;
+    });
+    none.hidden = shown > 0 || items.length === 0;
+    if (items.length) none.textContent = 'No matches.';
+  });
+</script>
+{% endblock %}
