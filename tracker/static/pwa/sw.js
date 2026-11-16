@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pressman-laundry-v2';
+const CACHE_NAME = 'jan-aushadi-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
