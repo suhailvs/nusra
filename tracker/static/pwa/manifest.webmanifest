@@ -1,14 +1,12 @@
 {
   "background_color": "#128C7E",
-  "display": "fullscreen",
+  "display": "standalone",
+  "scope": "/",
   "icons": [
     { "src": "/static/pwa/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/static/pwa/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/static/pwa/icon-maskable-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/static/pwa/icon-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/static/pwa/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ],
   "name": "Jan aushadi Store",
   "short_name": "JanAushadi",
-  "start_url": "/",
-  "share_target": {"action": "/locations/add/","method": "GET","params": {"title":"title","text": "text","url": "url"}}
+  "start_url": "/"
 }

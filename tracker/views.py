@@ -1,6 +1,17 @@
+from pathlib import Path
+
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from .forms import CustomerForm, MedicineForm
 from .models import Medicine
+
+
+def service_worker(request):
+    worker_path = Path(__file__).parent / "static" / "pwa" / "sw.js"
+    response = HttpResponse(worker_path.read_text(), content_type="application/javascript")
+    response["Service-Worker-Allowed"] = "/"
+    response["Cache-Control"] = "no-cache"
+    return response
 
 
 def home(request):
